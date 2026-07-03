@@ -1,0 +1,4 @@
+interface:
+  display_name: "UAV Setup"
+  short_description: "Initialize UAV on a local machine"
+  default_prompt: "Use $setup to initialize UAV on this machine."

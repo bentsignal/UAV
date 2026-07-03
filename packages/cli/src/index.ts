@@ -123,9 +123,9 @@ async function main(): Promise<void> {
     .description("Agent coordination for local codebases")
     .option("--json", "print machine-readable JSON");
 
-  program.action(() => {
+  if (process.argv.length <= 2) {
     program.help();
-  });
+  }
 
   program
     .command("context")
