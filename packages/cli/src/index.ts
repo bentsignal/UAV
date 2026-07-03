@@ -17,6 +17,10 @@ interface JsonOptions {
   json?: boolean;
 }
 
+interface NotesOptions {
+  limit?: number;
+}
+
 function print(value: unknown, options: JsonOptions): void {
   if (options.json) {
     process.stdout.write(toJson(value));
@@ -96,6 +100,22 @@ async function runRemember(
   print({ noteId, ok: true }, options);
 }
 
+async function runNotes(
+  query: string | undefined,
+  commandOptions: NotesOptions,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+  const { context, projectId } = await ensureCurrentProject(client);
+  const notes = await client.query(api.notes.queries.listForProject, {
+    limit: commandOptions.limit,
+    projectId,
+    query,
+  });
+
+  print({ notes, project: context }, options);
+}
+
 async function runRequest(
   message: string,
   options: JsonOptions,
@@ -156,6 +176,19 @@ async function main(): Promise<void> {
     .argument("<message...>")
     .action(async (message: string[]) => {
       await runRemember(message.join(" "), program.opts<JsonOptions>());
+    });
+
+  program
+    .command("notes")
+    .description("show recent notes for the current project")
+    .argument("[query...]", "optional text to search for")
+    .option("--limit <limit>", "maximum notes to show", Number)
+    .action(async (query: string[], commandOptions: NotesOptions) => {
+      await runNotes(
+        query.length > 0 ? query.join(" ") : undefined,
+        commandOptions,
+        program.opts<JsonOptions>(),
+      );
     });
 
   program

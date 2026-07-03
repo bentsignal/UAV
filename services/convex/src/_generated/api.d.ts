@@ -14,6 +14,7 @@ import type * as events_mutations from "../events/mutations.js";
 import type * as events_queries from "../events/queries.js";
 import type * as events_validators from "../events/validators.js";
 import type * as notes_mutations from "../notes/mutations.js";
+import type * as notes_queries from "../notes/queries.js";
 import type * as notes_validators from "../notes/validators.js";
 import type * as projects_mutations from "../projects/mutations.js";
 import type * as projects_queries from "../projects/queries.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "events/queries": typeof events_queries;
   "events/validators": typeof events_validators;
   "notes/mutations": typeof notes_mutations;
+  "notes/queries": typeof notes_queries;
   "notes/validators": typeof notes_validators;
   "projects/mutations": typeof projects_mutations;
   "projects/queries": typeof projects_queries;
