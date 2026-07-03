@@ -1,0 +1,7 @@
+{
+  "name": "@uav/tsconfig",
+  "private": true,
+  "files": [
+    "*.json"
+  ]
+}

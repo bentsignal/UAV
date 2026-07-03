@@ -1,0 +1,40 @@
+{
+  "name": "@uav/convex",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": {
+      "types": "./src/_generated/api.d.ts",
+      "default": "./src/_generated/api.js"
+    },
+    "./model": {
+      "types": "./src/_generated/dataModel.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "convex deploy",
+    "clean": "git clean -xdf .cache .turbo node_modules",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path .prettierignore",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "setup": "convex dev --until-success",
+    "dev": "convex dev",
+    "logs": "convex logs"
+  },
+  "devDependencies": {
+    "@convex-dev/eslint-plugin": "^1.1.1",
+    "@types/node": "^22.19.1",
+    "@uav/eslint-config": "workspace:*",
+    "@uav/prettier-config": "workspace:*",
+    "@uav/tsconfig": "workspace:*",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:"
+  },
+  "prettier": "@uav/prettier-config",
+  "dependencies": {
+    "@uav/config": "workspace:*",
+    "convex": "catalog:",
+    "convex-helpers": "^0.1.108"
+  }
+}

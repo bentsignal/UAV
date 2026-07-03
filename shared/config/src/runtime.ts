@@ -1,0 +1,5 @@
+export const DEFAULT_DAEMON_HOST = "127.0.0.1";
+
+export const DEFAULT_DAEMON_PORT = 4787;
+
+export const DEFAULT_DAEMON_URL = `http://${DEFAULT_DAEMON_HOST}:${DEFAULT_DAEMON_PORT}`;
