@@ -1,4 +1,0 @@
-interface:
-  display_name: "uav"
-  short_description: "Use uav as project memory and work context"
-  default_prompt: "Use $uav to check and update this project’s shared work context."

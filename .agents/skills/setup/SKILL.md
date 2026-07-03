@@ -9,6 +9,8 @@ description: Initialize UAV on a local machine. Use when the user asks to set up
 
 Guide the user through a local-first UAV setup. Prefer agent-assisted setup over a rigid installer: explain choices, ask only for decisions the user must make, run deterministic commands yourself, and verify each layer before moving on.
 
+The distributable uav skill lives under `resources/skills/uav/` as an artifact for other projects. Do not treat it as a setup skill for this repository.
+
 ## Workflow
 
 1. Confirm the UAV repo path and inspect the current state:
