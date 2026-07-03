@@ -21,6 +21,8 @@ The distributable uav skill lives under `resources/skills/uav/` as an artifact f
    - `pnpm --filter @uav/cli uav help`
 2. Install dependencies with `pnpm install` if needed. If pnpm prompts about build approvals, use the non-interactive approval command when appropriate and explain what is being approved.
 3. Ask which coding agent CLI the user wants UAV to identify as and use for agent-facing workflows.
+   - Always ask the user before choosing an agent CLI. Do this even when only one likely agent is installed, and especially when the current agent is also one of the installed options.
+   - Do not infer the answer from the agent currently running setup, from the most recently used tool, or from a personal preference. UAV should use the user's explicit choice.
    - Accept any answer, including informal names such as "pi"; use the agent's judgment to find the likely local command.
    - Check obvious command names directly, such as `command -v claude`, `command -v codex`, `command -v aider`, `command -v opencode`, or a command inferred from the user's answer.
    - If the command is not obvious, search likely user-local bins such as `~/.local/bin`, `~/.bun/bin`, npm/pnpm global bins, and tool-specific locations.
@@ -33,7 +35,13 @@ The distributable uav skill lives under `resources/skills/uav/` as an artifact f
    - Ask before editing when the shell is ambiguous, when multiple plausible config files exist, when the user has a nonstandard shell, or when the user may want a different alias/function name.
    - Default command name: `uav`.
    - Do not assume the user wants shell files edited if they ask only for diagnostics.
-5. Install or update executable shims first, then add shell exports only as needed.
+5. Inspect existing `uav` commands before installing or updating shims.
+   - Check every `uav` found on PATH, using shell-aware lookup where possible (`type -a uav`, `whence -a uav`, or equivalent). Also inspect likely user-local bins such as `~/.local/bin`.
+   - For each executable, read the shim target or resolved path enough to determine whether it runs this exact checkout. Treat a shim as this checkout when it delegates to the current repo path, current `UAV_HOME`, or the current repo's `packages/cli/src/index.ts`.
+   - If an existing `uav` command already points to this exact checkout, leave it in place and do not create a duplicate. Only update shell exports that are missing or stale, and tell the user UAV is already installed for this project.
+   - If an existing `uav` command points to another UAV checkout, another tool, or cannot be identified confidently, stop before changing it. Ask the user whether to replace it, keep it and choose another command name for this checkout, or inspect further.
+   - If multiple `uav` commands exist, explain the PATH order and resolve the conflict before installing another shim.
+6. Install or update executable shims only after the existing-command check passes, then add shell exports only as needed.
    - Prefer real commands in a user-local bin on PATH, such as `~/.local/bin/uav`.
    - The shim should preserve the caller directory through `UAV_CONTEXT_CWD` and run the UAV CLI from the UAV repo.
    - Avoid making agents rely on interactive shell loading, `zsh -ic`, aliases, or functions.
@@ -47,24 +55,26 @@ The distributable uav skill lives under `resources/skills/uav/` as an artifact f
    ```
 
    Adjust the path and values to match the user’s choices. Avoid duplicating existing blocks; update the existing UAV block if present.
-6. Configure Convex intentionally. Read `references/convex.md` before this step.
+7. Configure Convex intentionally. Read `references/convex.md` before this step.
    - Check the installed Convex package version.
    - Have the user authenticate if needed.
+   - If Convex shows multiple teams for the logged-in account, always ask the user which team to use before creating or selecting a project/deployment.
    - Help the user create or select the UAV Convex project/deployment.
    - Prefer a single cloud dev deployment for UAV unless the user explicitly asks for prod/staging.
    - Capture the Convex URL needed by the CLI as `UAV_CONVEX_URL`.
-7. Verify setup:
+8. Verify setup:
    - `uav help`
    - `uav context --json`
    - `uav start`, then `curl -fsS http://127.0.0.1:4787/health`
    - A Convex-backed command such as `uav report "UAV setup smoke test"` once Convex is configured
    - `pnpm run lint`
    - `pnpm run typecheck`
-8. Summarize what changed, what remains manual, and how to reload the shell.
+9. Summarize what changed, what remains manual, and how to reload the shell.
 
 ## Convex Setup Rules
 
 - Never imply Convex is configured until a command has successfully selected or created a deployment and a URL is available.
+- Never choose a Convex team on the user's behalf when multiple teams are available. Ask the user and use their explicit answer.
 - Use the project’s local dependency where possible: `pnpm --filter @uav/convex exec convex ...`.
 - If the installed Convex CLI is older than the command you plan to use, update the `convex` dependency or use the older `convex dev` interactive flow.
 - Do not deploy to a production Convex deployment unless the user explicitly asks. UAV is intended to use one cloud dev deployment.

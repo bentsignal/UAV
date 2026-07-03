@@ -1,0 +1,6 @@
+interface:
+  display_name: "Reset Project"
+  short_description: "Reset only on explicit request"
+  default_prompt: "Use $reset-project to reset this UAV checkout for a fresh setup test."
+policy:
+  allow_implicit_invocation: false
