@@ -11,6 +11,7 @@ import {
   ensureCurrentProject,
 } from "./convex.ts";
 import { ensureDaemonStarted, startDaemon } from "./daemon.ts";
+import { readUavSkill, readUavWorkflow } from "./skill.ts";
 
 interface JsonOptions {
   json?: boolean;
@@ -136,7 +137,7 @@ async function main(): Promise<void> {
 
   program
     .command("status")
-    .description("show current project activity from UAV")
+    .description("show current project activity from uav")
     .action(async () => {
       await runStatus(program.opts<JsonOptions>());
     });
@@ -159,15 +160,29 @@ async function main(): Promise<void> {
 
   program
     .command("request")
-    .description("ask the UAV orchestrator for a capability or schema change")
+    .description("ask uav for a capability or schema change")
     .argument("<message...>")
     .action(async (message: string[]) => {
       await runRequest(message.join(" "), program.opts<JsonOptions>());
     });
 
   program
+    .command("skill")
+    .description("print the durable uav agent skill text")
+    .action(async () => {
+      process.stdout.write(await readUavSkill());
+    });
+
+  program
+    .command("workflow")
+    .description("print current guidance for using uav during agent work")
+    .action(async () => {
+      process.stdout.write(await readUavWorkflow());
+    });
+
+  program
     .command("start")
-    .description("start the local UAV daemon if it is not already running")
+    .description("start the local uav daemon if it is not already running")
     .option("--port <port>", "port to bind", Number)
     .action(async (options: { port?: number }) => {
       await ensureDaemonStarted(options.port);
@@ -175,7 +190,7 @@ async function main(): Promise<void> {
 
   program
     .command("daemon")
-    .description("start the local UAV daemon boundary")
+    .description("start the local uav daemon boundary")
     .option("--port <port>", "port to bind", Number)
     .action(async (options: { port?: number }) => {
       await startDaemon(options.port);

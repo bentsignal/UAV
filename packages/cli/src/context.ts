@@ -11,7 +11,11 @@ export interface RepoContext {
   worktreeRoot: string;
 }
 
-function readGit(args: string[], cwd = process.cwd()): string | undefined {
+function getContextCwd(): string {
+  return resolve(process.env.UAV_CONTEXT_CWD ?? process.cwd());
+}
+
+function readGit(args: string[], cwd = getContextCwd()): string | undefined {
   try {
     return execFileSync("git", args, {
       cwd,
@@ -24,7 +28,9 @@ function readGit(args: string[], cwd = process.cwd()): string | undefined {
 }
 
 export function getRepoContext(): RepoContext {
-  const repoRoot = readGit(["rev-parse", "--show-toplevel"]) ?? process.cwd();
+  const contextCwd = getContextCwd();
+  const repoRoot =
+    readGit(["rev-parse", "--show-toplevel"], contextCwd) ?? contextCwd;
   const worktreeRoot = resolve(repoRoot);
   const remoteUrl = readGit(["config", "--get", "remote.origin.url"], repoRoot);
   const branch = readGit(["branch", "--show-current"], repoRoot);
@@ -46,6 +52,17 @@ export function getRepoContext(): RepoContext {
 
 export function getAgentName(): string {
   return process.env.UAV_AGENT_NAME ?? process.env.USER ?? "unknown-agent";
+}
+
+export function getAgentKind(): string {
+  return process.env.UAV_AGENT_KIND ?? "agent";
+}
+
+export function getAgentMetadata(): Record<string, string> | undefined {
+  const command = process.env.UAV_AGENT_COMMAND;
+  if (!command) return undefined;
+
+  return { command };
 }
 
 export function getHostName(): string {

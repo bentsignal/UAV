@@ -1,0 +1,15 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+uav_home="${UAV_HOME:-$HOME/dev/projects/uav}"
+export UAV_CONTEXT_CWD="${UAV_CONTEXT_CWD:-$PWD}"
+
+if [[ -z "${UAV_CONVEX_URL:-}" ]]; then
+  env_file="$uav_home/services/convex/.env.local"
+  if [[ -r "$env_file" ]]; then
+    convex_url="$(awk -F= '/^CONVEX_URL=/ { print $2; exit }' "$env_file" | sed 's/[[:space:]]#.*$//')"
+    export UAV_CONVEX_URL="$convex_url"
+  fi
+fi
+
+exec node --experimental-strip-types "$uav_home/packages/cli/src/index.ts" "$@"
