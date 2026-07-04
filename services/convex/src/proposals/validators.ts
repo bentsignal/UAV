@@ -16,8 +16,6 @@ export const vProposalKind = v.union(
 
 export const vProposal = v.object({
   projectId: v.optional(v.id("projects")),
-  sessionId: v.optional(v.id("sessions")),
-  agentId: v.optional(v.id("agents")),
   kind: vProposalKind,
   status: vProposalStatus,
   title: v.string(),

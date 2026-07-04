@@ -1,12 +1,11 @@
 import { v } from "convex/values";
 
 export const vTaskStatus = v.union(
-  v.literal("backlog"),
-  v.literal("ready"),
-  v.literal("active"),
+  v.literal("todo"),
+  v.literal("in_progress"),
   v.literal("blocked"),
   v.literal("done"),
-  v.literal("cancelled"),
+  v.literal("canceled"),
 );
 
 export const vTaskPriority = v.union(
@@ -16,13 +15,23 @@ export const vTaskPriority = v.union(
   v.literal("urgent"),
 );
 
+export const vTaskKind = v.union(
+  v.literal("task"),
+  v.literal("bug"),
+  v.literal("idea"),
+  v.literal("chore"),
+  v.literal("goal"),
+);
+
 export const vTask = v.object({
   projectId: v.id("projects"),
-  sessionId: v.optional(v.id("sessions")),
+  parentTaskId: v.optional(v.id("tasks")),
   title: v.string(),
   body: v.optional(v.string()),
   status: vTaskStatus,
   priority: vTaskPriority,
+  kind: vTaskKind,
+  tags: v.array(v.string()),
   searchText: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),

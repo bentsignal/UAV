@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { hostname } from "node:os";
 import { basename, resolve } from "node:path";
 
 export interface RepoContext {
@@ -48,23 +47,4 @@ export function getRepoContext(): RepoContext {
     repoRoot: worktreeRoot,
     worktreeRoot,
   };
-}
-
-export function getAgentName(): string {
-  return process.env.UAV_AGENT_NAME ?? process.env.USER ?? "unknown-agent";
-}
-
-export function getAgentKind(): string {
-  return process.env.UAV_AGENT_KIND ?? "agent";
-}
-
-export function getAgentMetadata(): Record<string, string> | undefined {
-  const command = process.env.UAV_AGENT_COMMAND;
-  if (!command) return undefined;
-
-  return { command };
-}
-
-export function getHostName(): string {
-  return hostname();
 }

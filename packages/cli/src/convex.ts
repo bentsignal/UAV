@@ -5,13 +5,7 @@ import { ConvexHttpClient } from "convex/browser";
 
 import { api } from "@uav/convex/api";
 
-import {
-  getAgentKind,
-  getAgentMetadata,
-  getAgentName,
-  getHostName,
-  getRepoContext,
-} from "./context.ts";
+import { getRepoContext } from "./context.ts";
 
 export type UavClient = ReturnType<typeof createUavClient>;
 
@@ -75,14 +69,4 @@ export async function ensureCurrentProject(client: UavClient) {
   });
 
   return { context, projectId };
-}
-
-export async function ensureCurrentAgent(client: UavClient) {
-  return await client.mutation(api.agents.mutations.upsert, {
-    host: getHostName(),
-    kind: getAgentKind(),
-    lastSeenAt: Date.now(),
-    metadata: getAgentMetadata(),
-    name: getAgentName(),
-  });
 }

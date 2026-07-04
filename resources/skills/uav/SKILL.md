@@ -1,6 +1,6 @@
 ---
 name: uav
-description: Use uav for shared project memory and coordination at the start of every project-work session, and when preserving context or reporting outcomes.
+description: Use uav for shared project memory and work tracking at the start of every project-work session, and when preserving context or outcomes.
 ---
 
 # uav

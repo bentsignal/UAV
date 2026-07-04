@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 
+import type { Id } from "@uav/convex/model";
 import { api } from "@uav/convex/api";
 import { toJson } from "@uav/std/json";
 
 import { getRepoContext } from "./context.ts";
-import {
-  createUavClient,
-  ensureCurrentAgent,
-  ensureCurrentProject,
-} from "./convex.ts";
+import { createUavClient, ensureCurrentProject } from "./convex.ts";
 import { ensureDaemonStarted, startDaemon } from "./daemon.ts";
 import { readUavSkill, readUavWorkflow } from "./skill.ts";
 
@@ -17,14 +14,46 @@ interface JsonOptions {
   json?: boolean;
 }
 
+interface AskOptions {
+  limit?: number;
+}
+
 interface NotesOptions {
   all?: boolean;
   global?: boolean;
+  intent?: boolean;
   limit?: number;
 }
 
 interface RememberOptions {
   global?: boolean;
+  intent?: boolean;
+}
+
+type TaskStatus = "todo" | "in_progress" | "blocked" | "done" | "canceled";
+type TaskPriority = "low" | "normal" | "high" | "urgent";
+type TaskKind = "task" | "bug" | "idea" | "chore" | "goal";
+
+interface TaskAddOptions {
+  body?: string;
+  kind?: TaskKind;
+  parent?: string;
+  priority?: TaskPriority;
+  tag?: string[];
+}
+
+interface TaskListOptions {
+  parent?: string;
+  status?: TaskStatus;
+}
+
+interface TaskUpdateOptions {
+  body?: string;
+  kind?: TaskKind;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+  tag?: string[];
+  title?: string;
 }
 
 function print(value: unknown, options: JsonOptions): void {
@@ -41,51 +70,41 @@ function print(value: unknown, options: JsonOptions): void {
   console.log(JSON.stringify(value, null, 2));
 }
 
+function collect(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
+
+function memoryWarning(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("OPENAI_API_KEY")) {
+    return "Memory indexing requires OPENAI_API_KEY in the Convex deployment environment.";
+  }
+
+  return message;
+}
+
 async function runStatus(options: JsonOptions): Promise<void> {
   const client = createUavClient();
   const { context, projectId } = await ensureCurrentProject(client);
-  const [activeSessions, recentEvents, activeTasks, blockedTasks] =
-    await Promise.all([
-      client.query(api.sessions.queries.activeForProject, { projectId }),
-      client.query(api.events.queries.recentForProject, {
-        limit: 10,
-        projectId,
-      }),
-      client.query(api.tasks.queries.listForProject, {
-        projectId,
-        status: "active",
-      }),
-      client.query(api.tasks.queries.listForProject, {
-        projectId,
-        status: "blocked",
-      }),
-    ]);
+  const [activeTasks, blockedTasks] = await Promise.all([
+    client.query(api.tasks.queries.listForProject, {
+      projectId,
+      status: "in_progress",
+    }),
+    client.query(api.tasks.queries.listForProject, {
+      projectId,
+      status: "blocked",
+    }),
+  ]);
 
   print(
     {
-      activeSessions,
       activeTasks,
       blockedTasks,
       project: context,
-      recentEvents,
     },
     options,
   );
-}
-
-async function runReport(message: string, options: JsonOptions): Promise<void> {
-  const client = createUavClient();
-  const [{ projectId }, agentId] = await Promise.all([
-    ensureCurrentProject(client),
-    ensureCurrentAgent(client),
-  ]);
-  const eventId = await client.mutation(api.events.mutations.create, {
-    agentId,
-    projectId,
-    summary: message,
-  });
-
-  print({ eventId, ok: true }, options);
 }
 
 async function runRemember(
@@ -94,12 +113,11 @@ async function runRemember(
   options: JsonOptions,
 ): Promise<void> {
   const client = createUavClient();
-  const agentId = await ensureCurrentAgent(client);
 
   if (commandOptions.global) {
     const noteId = await client.mutation(api.notes.mutations.create, {
-      agentId,
       body: message,
+      kind: commandOptions.intent ? "intent" : "note",
       scope: "global",
     });
 
@@ -109,21 +127,33 @@ async function runRemember(
 
   const { projectId } = await ensureCurrentProject(client);
   const noteId = await client.mutation(api.notes.mutations.create, {
-    agentId,
     body: message,
+    kind: commandOptions.intent ? "intent" : "note",
     projectId,
     scope: "project",
   });
 
-  print({ noteId, ok: true, scope: "project" }, options);
+  try {
+    const memory = await client.action(api.memory.indexNote, { noteId });
+    print({ memory, noteId, ok: true, scope: "project" }, options);
+  } catch (error) {
+    print(
+      {
+        memory: { indexed: false, warning: memoryWarning(error) },
+        noteId,
+        ok: true,
+        scope: "project",
+      },
+      options,
+    );
+  }
 }
 
 async function runIdea(message: string, options: JsonOptions): Promise<void> {
   const client = createUavClient();
-  const agentId = await ensureCurrentAgent(client);
   const noteId = await client.mutation(api.notes.mutations.create, {
-    agentId,
     body: message,
+    kind: "idea",
     scope: "global",
     tags: ["idea"],
   });
@@ -164,6 +194,7 @@ async function runNotes(
 
   const { context, projectId } = await ensureCurrentProject(client);
   const notes = await client.query(api.notes.queries.listForProject, {
+    kind: commandOptions.intent ? "intent" : undefined,
     limit: commandOptions.limit,
     projectId,
     query,
@@ -172,17 +203,195 @@ async function runNotes(
   print({ notes, project: context }, options);
 }
 
+async function runIntent(
+  message: string | undefined,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+
+  if (message) {
+    const { projectId } = await ensureCurrentProject(client);
+    const noteId = await client.mutation(api.notes.mutations.create, {
+      body: message,
+      kind: "intent",
+      projectId,
+      scope: "project",
+      tags: ["intent"],
+    });
+
+    try {
+      const memory = await client.action(api.memory.indexNote, { noteId });
+      print({ memory, noteId, ok: true, scope: "project" }, options);
+    } catch (error) {
+      print(
+        {
+          memory: { indexed: false, warning: memoryWarning(error) },
+          noteId,
+          ok: true,
+          scope: "project",
+        },
+        options,
+      );
+    }
+    return;
+  }
+
+  const { context, projectId } = await ensureCurrentProject(client);
+  const notes = await client.query(api.notes.queries.listForProject, {
+    kind: "intent",
+    limit: 25,
+    projectId,
+  });
+
+  print({ notes, project: context }, options);
+}
+
+async function runAsk(
+  question: string,
+  commandOptions: AskOptions,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+  const { context, projectId } = await ensureCurrentProject(client);
+  const memory = await client.action(api.memory.indexProject, {
+    limit: 100,
+    projectId,
+  });
+  const result = await client.action(api.memory.ask, {
+    limit: commandOptions.limit,
+    projectId,
+    query: question,
+  });
+
+  print({ memory, project: context, question, result }, options);
+}
+
+function parseTaskId(value: string): Id<"tasks"> {
+  return value as Id<"tasks">;
+}
+
+async function runTaskAdd(
+  title: string,
+  commandOptions: TaskAddOptions,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+  const { projectId } = await ensureCurrentProject(client);
+  const taskId = await client.mutation(api.tasks.mutations.create, {
+    body: commandOptions.body,
+    kind: commandOptions.kind,
+    parentTaskId: commandOptions.parent
+      ? parseTaskId(commandOptions.parent)
+      : undefined,
+    priority: commandOptions.priority,
+    projectId,
+    tags: commandOptions.tag,
+    title,
+  });
+
+  try {
+    const memory = await client.action(api.memory.indexTask, { taskId });
+    print({ memory, ok: true, taskId }, options);
+  } catch (error) {
+    print(
+      {
+        memory: { indexed: false, warning: memoryWarning(error) },
+        ok: true,
+        taskId,
+      },
+      options,
+    );
+  }
+}
+
+async function runTaskList(
+  query: string | undefined,
+  commandOptions: TaskListOptions,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+  const { context, projectId } = await ensureCurrentProject(client);
+  const tasks = await client.query(api.tasks.queries.listForProject, {
+    parentTaskId: commandOptions.parent
+      ? parseTaskId(commandOptions.parent)
+      : undefined,
+    projectId,
+    query,
+    status: commandOptions.status,
+  });
+
+  print({ project: context, tasks }, options);
+}
+
+async function runTaskStatus(
+  taskId: string,
+  status: TaskStatus,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+  await client.mutation(api.tasks.mutations.updateStatus, {
+    status,
+    taskId: parseTaskId(taskId),
+  });
+
+  try {
+    const memory = await client.action(api.memory.indexTask, {
+      taskId: parseTaskId(taskId),
+    });
+    print({ memory, ok: true, status, taskId }, options);
+  } catch (error) {
+    print(
+      {
+        memory: { indexed: false, warning: memoryWarning(error) },
+        ok: true,
+        status,
+        taskId,
+      },
+      options,
+    );
+  }
+}
+
+async function runTaskUpdate(
+  taskId: string,
+  commandOptions: TaskUpdateOptions,
+  options: JsonOptions,
+): Promise<void> {
+  const client = createUavClient();
+  await client.mutation(api.tasks.mutations.update, {
+    body: commandOptions.body,
+    kind: commandOptions.kind,
+    priority: commandOptions.priority,
+    status: commandOptions.status,
+    tags: commandOptions.tag,
+    taskId: parseTaskId(taskId),
+    title: commandOptions.title,
+  });
+
+  try {
+    const memory = await client.action(api.memory.indexTask, {
+      taskId: parseTaskId(taskId),
+    });
+    print({ memory, ok: true, taskId }, options);
+  } catch (error) {
+    print(
+      {
+        memory: { indexed: false, warning: memoryWarning(error) },
+        ok: true,
+        taskId,
+      },
+      options,
+    );
+  }
+}
+
 async function runRequest(
   message: string,
   options: JsonOptions,
 ): Promise<void> {
   const client = createUavClient();
-  const [{ projectId }, agentId] = await Promise.all([
-    ensureCurrentProject(client),
-    ensureCurrentAgent(client),
-  ]);
+  const { projectId } = await ensureCurrentProject(client);
   const proposalId = await client.mutation(api.proposals.mutations.create, {
-    agentId,
     body: message,
     kind: "capability",
     projectId,
@@ -197,7 +406,7 @@ async function main(): Promise<void> {
 
   program
     .name("uav")
-    .description("Agent coordination for local codebases")
+    .description("Project memory and work tracking for local codebases")
     .option("--json", "print machine-readable JSON");
 
   if (process.argv.length <= 2) {
@@ -213,17 +422,22 @@ async function main(): Promise<void> {
 
   program
     .command("status")
-    .description("show current project activity from uav")
+    .description("show current project work from uav")
     .action(async () => {
       await runStatus(program.opts<JsonOptions>());
     });
 
   program
-    .command("report")
-    .description("append a progress report event")
-    .argument("<message...>")
-    .action(async (message: string[]) => {
-      await runReport(message.join(" "), program.opts<JsonOptions>());
+    .command("ask")
+    .description("search current project memory with natural language")
+    .argument("<question...>")
+    .option("--limit <limit>", "maximum memory results to retrieve", Number)
+    .action(async (question: string[], commandOptions: AskOptions) => {
+      await runAsk(
+        question.join(" "),
+        commandOptions,
+        program.opts<JsonOptions>(),
+      );
     });
 
   program
@@ -233,6 +447,7 @@ async function main(): Promise<void> {
     )
     .argument("<message...>")
     .option("-g, --global", "store the note in the global inbox")
+    .option("--intent", "mark the note as durable project intent")
     .action(async (message: string[], commandOptions: RememberOptions) => {
       await runRemember(
         message.join(" "),
@@ -255,6 +470,7 @@ async function main(): Promise<void> {
     .argument("[query...]", "optional text to search for")
     .option("-g, --global", "show global inbox notes")
     .option("-a, --all", "show notes across every scope")
+    .option("--intent", "show durable project intent notes")
     .option("--limit <limit>", "maximum notes to show", Number)
     .action(async (query: string[], commandOptions: NotesOptions) => {
       await runNotes(
@@ -262,6 +478,75 @@ async function main(): Promise<void> {
         commandOptions,
         program.opts<JsonOptions>(),
       );
+    });
+
+  program
+    .command("intent")
+    .description("show or store durable intent for the current project")
+    .argument("[message...]", "intent to store; omit to list saved intent")
+    .action(async (message: string[]) => {
+      await runIntent(
+        message.length > 0 ? message.join(" ") : undefined,
+        program.opts<JsonOptions>(),
+      );
+    });
+
+  const task = program
+    .command("task")
+    .description("manage durable project work items");
+
+  task
+    .command("add")
+    .description("add a project work item")
+    .argument("<title...>")
+    .option("--body <body>", "longer task details")
+    .option("--kind <kind>", "task, bug, idea, chore, or goal")
+    .option("--parent <taskId>", "parent work item id")
+    .option("--priority <priority>", "low, normal, high, or urgent")
+    .option("--tag <tag>", "tag to attach; can be repeated", collect)
+    .action(async (title: string[], commandOptions: TaskAddOptions) => {
+      await runTaskAdd(
+        title.join(" "),
+        commandOptions,
+        program.opts<JsonOptions>(),
+      );
+    });
+
+  task
+    .command("list")
+    .description("list or search project work items")
+    .argument("[query...]", "optional text to search for")
+    .option("--parent <taskId>", "only show children of a work item")
+    .option("--status <status>", "todo, in_progress, blocked, done, canceled")
+    .action(async (query: string[], commandOptions: TaskListOptions) => {
+      await runTaskList(
+        query.length > 0 ? query.join(" ") : undefined,
+        commandOptions,
+        program.opts<JsonOptions>(),
+      );
+    });
+
+  task
+    .command("status")
+    .description("update a work item status")
+    .argument("<taskId>")
+    .argument("<status>")
+    .action(async (taskId: string, status: TaskStatus) => {
+      await runTaskStatus(taskId, status, program.opts<JsonOptions>());
+    });
+
+  task
+    .command("update")
+    .description("update work item fields")
+    .argument("<taskId>")
+    .option("--body <body>", "replace task details")
+    .option("--kind <kind>", "task, bug, idea, chore, or goal")
+    .option("--priority <priority>", "low, normal, high, or urgent")
+    .option("--status <status>", "todo, in_progress, blocked, done, canceled")
+    .option("--tag <tag>", "replace tags; can be repeated", collect)
+    .option("--title <title>", "replace title")
+    .action(async (taskId: string, commandOptions: TaskUpdateOptions) => {
+      await runTaskUpdate(taskId, commandOptions, program.opts<JsonOptions>());
     });
 
   program

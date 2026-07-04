@@ -33,7 +33,9 @@
   },
   "prettier": "@uav/prettier-config",
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.80",
     "@uav/config": "workspace:*",
+    "ai": "^6.0.219",
     "convex": "catalog:",
     "convex-helpers": "^0.1.108"
   }
