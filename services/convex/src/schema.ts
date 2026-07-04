@@ -34,11 +34,13 @@ export default defineSchema(
       .index("by_session_createdAt", ["sessionId", "createdAt"])
       .index("by_task_createdAt", ["taskId", "createdAt"]),
     notes: defineTable(vNote)
+      .index("by_createdAt", ["createdAt"])
+      .index("by_scope_createdAt", ["scope", "createdAt"])
       .index("by_project_createdAt", ["projectId", "createdAt"])
       .index("by_task_createdAt", ["taskId", "createdAt"])
       .searchIndex("search_body", {
         searchField: "body",
-        filterFields: ["projectId"],
+        filterFields: ["projectId", "scope"],
       }),
     proposals: defineTable(vProposal)
       .index("by_status", ["status"])

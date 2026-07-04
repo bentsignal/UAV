@@ -18,7 +18,13 @@ interface JsonOptions {
 }
 
 interface NotesOptions {
+  all?: boolean;
+  global?: boolean;
   limit?: number;
+}
+
+interface RememberOptions {
+  global?: boolean;
 }
 
 function print(value: unknown, options: JsonOptions): void {
@@ -84,20 +90,45 @@ async function runReport(message: string, options: JsonOptions): Promise<void> {
 
 async function runRemember(
   message: string,
+  commandOptions: RememberOptions,
   options: JsonOptions,
 ): Promise<void> {
   const client = createUavClient();
-  const [{ projectId }, agentId] = await Promise.all([
-    ensureCurrentProject(client),
-    ensureCurrentAgent(client),
-  ]);
+  const agentId = await ensureCurrentAgent(client);
+
+  if (commandOptions.global) {
+    const noteId = await client.mutation(api.notes.mutations.create, {
+      agentId,
+      body: message,
+      scope: "global",
+    });
+
+    print({ noteId, ok: true, scope: "global" }, options);
+    return;
+  }
+
+  const { projectId } = await ensureCurrentProject(client);
   const noteId = await client.mutation(api.notes.mutations.create, {
     agentId,
     body: message,
     projectId,
+    scope: "project",
   });
 
-  print({ noteId, ok: true }, options);
+  print({ noteId, ok: true, scope: "project" }, options);
+}
+
+async function runIdea(message: string, options: JsonOptions): Promise<void> {
+  const client = createUavClient();
+  const agentId = await ensureCurrentAgent(client);
+  const noteId = await client.mutation(api.notes.mutations.create, {
+    agentId,
+    body: message,
+    scope: "global",
+    tags: ["idea"],
+  });
+
+  print({ noteId, ok: true, scope: "global" }, options);
 }
 
 async function runNotes(
@@ -106,6 +137,31 @@ async function runNotes(
   options: JsonOptions,
 ): Promise<void> {
   const client = createUavClient();
+
+  if (commandOptions.all && commandOptions.global) {
+    throw new Error("Use either --all or --global, not both");
+  }
+
+  if (commandOptions.all) {
+    const notes = await client.query(api.notes.queries.listAll, {
+      limit: commandOptions.limit,
+      query,
+    });
+
+    print({ notes, scope: "all" }, options);
+    return;
+  }
+
+  if (commandOptions.global) {
+    const notes = await client.query(api.notes.queries.listGlobal, {
+      limit: commandOptions.limit,
+      query,
+    });
+
+    print({ notes, scope: "global" }, options);
+    return;
+  }
+
   const { context, projectId } = await ensureCurrentProject(client);
   const notes = await client.query(api.notes.queries.listForProject, {
     limit: commandOptions.limit,
@@ -172,16 +228,33 @@ async function main(): Promise<void> {
 
   program
     .command("remember")
-    .description("store a loose note for the current project")
+    .description(
+      "store a note for the current project, or globally with --global",
+    )
+    .argument("<message...>")
+    .option("-g, --global", "store the note in the global inbox")
+    .action(async (message: string[], commandOptions: RememberOptions) => {
+      await runRemember(
+        message.join(" "),
+        commandOptions,
+        program.opts<JsonOptions>(),
+      );
+    });
+
+  program
+    .command("idea")
+    .description("store a one-off global idea")
     .argument("<message...>")
     .action(async (message: string[]) => {
-      await runRemember(message.join(" "), program.opts<JsonOptions>());
+      await runIdea(message.join(" "), program.opts<JsonOptions>());
     });
 
   program
     .command("notes")
     .description("show recent notes for the current project")
     .argument("[query...]", "optional text to search for")
+    .option("-g, --global", "show global inbox notes")
+    .option("-a, --all", "show notes across every scope")
     .option("--limit <limit>", "maximum notes to show", Number)
     .action(async (query: string[], commandOptions: NotesOptions) => {
       await runNotes(
