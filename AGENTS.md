@@ -19,9 +19,7 @@ If all of these succeed, run:
 
 Then summarize changes for the user.
 
-## Preferences
+## Workflow
 
-- Do **_NOT_** leave excessive comments when writing code. Only leave comments when
-  the code itself does not clearly explain what it does
 - Keep `uav help` and `uav workflow` accurate whenever CLI commands, arguments, or descriptions
   change.
