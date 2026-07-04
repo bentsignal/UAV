@@ -10,9 +10,9 @@ Use uav as shared project memory and durable work tracking:
    the raw saved intent notes.
 4. Check durable project notes with `uav notes`, global inbox notes with
    `uav notes --global`, or search across scopes with `uav notes --all <query>`.
-5. Use `uav task list` to inspect durable work items. Use `uav task add` for
-   larger goals, bugs, ideas, chores, or follow-up tasks that should outlive the
-   current agent context.
+5. Use `uav task list` to inspect durable work items, optionally narrowing with
+   `--status` or `--priority`. Use `uav task add` for larger goals, bugs, ideas,
+   chores, or follow-up tasks that should outlive the current agent context.
 6. During work, record decisions, discoveries, blockers, validation results, and
    other context worth preserving with `uav remember`.
 7. When finishing or pausing, store any durable outcome or follow-up as a note,

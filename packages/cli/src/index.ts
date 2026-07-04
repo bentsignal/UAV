@@ -44,6 +44,7 @@ interface TaskAddOptions {
 
 interface TaskListOptions {
   parent?: string;
+  priority?: TaskPriority;
   status?: TaskStatus;
 }
 
@@ -315,6 +316,7 @@ async function runTaskList(
     parentTaskId: commandOptions.parent
       ? parseTaskId(commandOptions.parent)
       : undefined,
+    priority: commandOptions.priority,
     projectId,
     query,
     status: commandOptions.status,
@@ -407,7 +409,20 @@ async function main(): Promise<void> {
   program
     .name("uav")
     .description("Project memory and work tracking for local codebases")
-    .option("--json", "print machine-readable JSON");
+    .option("--json", "print machine-readable JSON")
+    .addHelpText(
+      "after",
+      `
+Common flow:
+  uav ask <question>       retrieve relevant project memory
+  uav status               inspect current work
+  uav remember <message>   preserve durable context
+  uav task <command>       manage structured work items
+
+Less common commands are still shown above for discovery, but the normal agent
+flow should start with ask/status/remember/task.
+`,
+    );
 
   if (process.argv.length <= 2) {
     program.help();
@@ -517,6 +532,7 @@ async function main(): Promise<void> {
     .description("list or search project work items")
     .argument("[query...]", "optional text to search for")
     .option("--parent <taskId>", "only show children of a work item")
+    .option("--priority <priority>", "low, normal, high, or urgent")
     .option("--status <status>", "todo, in_progress, blocked, done, canceled")
     .action(async (query: string[], commandOptions: TaskListOptions) => {
       await runTaskList(
