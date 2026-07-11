@@ -15,7 +15,6 @@ export const vNote = v.object({
   projectId: v.optional(v.id("projects")),
   taskId: v.optional(v.id("tasks")),
   body: v.string(),
-  tags: v.array(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });

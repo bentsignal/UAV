@@ -156,7 +156,6 @@ async function runIdea(message: string, options: JsonOptions): Promise<void> {
     body: message,
     kind: "idea",
     scope: "global",
-    tags: ["idea"],
   });
 
   print({ noteId, ok: true, scope: "global" }, options);
@@ -217,7 +216,6 @@ async function runIntent(
       kind: "intent",
       projectId,
       scope: "project",
-      tags: ["intent"],
     });
 
     try {

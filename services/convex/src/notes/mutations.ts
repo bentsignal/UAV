@@ -10,7 +10,6 @@ export const create = mutation({
     taskId: v.optional(v.id("tasks")),
     body: v.string(),
     kind: v.optional(vNoteKind),
-    tags: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -30,7 +29,6 @@ export const create = mutation({
       kind: args.kind ?? "note",
       projectId: args.projectId,
       scope,
-      tags: args.tags ?? [],
       taskId: args.taskId,
       updatedAt: now,
     });

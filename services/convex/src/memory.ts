@@ -48,13 +48,7 @@ function embeddingModel() {
 }
 
 function noteMemoryText(note: Doc<"notes">) {
-  return [
-    `Type: ${note.kind}`,
-    note.tags.length > 0 ? `Tags: ${note.tags.join(", ")}` : undefined,
-    note.body,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return [`Type: ${note.kind}`, note.body].join("\n");
 }
 
 function taskMemoryText(task: Doc<"tasks">) {
