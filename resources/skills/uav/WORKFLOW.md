@@ -20,6 +20,13 @@ Use uav as shared project memory and durable work tracking:
 8. If uav needs a better schema, workflow, retrieval behavior, or CLI surface,
    record an improvement request with `uav request`.
 
+Treat the repository's current code, configuration, and tests as the source of
+truth for how the software works now. Use uav to preserve why work was done,
+when it happened, the intent and decisions behind it, validation outcomes, and
+findings that are not obvious from the code. Implementation notes and completed
+tasks are historical context, not competing runbooks; tie snapshots to a commit
+when useful, and inspect the current repository before relying on old mechanics.
+
 Keep the API intentionally thin. Prefer improving the behavior behind existing
 commands such as `uav ask`, `uav status`, `uav remember`, `uav intent`,
 `uav task`, and `uav request` over adding specialized commands. New top-level
