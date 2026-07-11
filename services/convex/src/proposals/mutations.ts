@@ -1,9 +1,9 @@
 import { v } from "convex/values";
 
-import { mutation } from "../_generated/server";
+import { authedMutation } from "../functions";
 import { vProposalKind } from "./validators";
 
-export const create = mutation({
+export const create = authedMutation({
   args: {
     projectId: v.optional(v.id("projects")),
     kind: v.optional(vProposalKind),

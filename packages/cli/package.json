@@ -16,9 +16,11 @@
     "uav": "node --experimental-strip-types src/index.ts"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "catalog:",
     "@uav/config": "workspace:*",
     "@uav/convex": "workspace:*",
     "@uav/std": "workspace:*",
+    "better-auth": "catalog:",
     "commander": "catalog:",
     "convex": "catalog:"
   },

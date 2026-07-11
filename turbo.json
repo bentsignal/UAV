@@ -47,10 +47,14 @@
   },
   "globalEnv": [
     "AUTH_SECRET",
+    "BETTER_AUTH_SECRET",
     "CONVEX_DEPLOY_KEY",
     "CONVEX_URL",
     "UAV_CONVEX_URL",
     "UAV_DAEMON_URL",
+    "UAV_ENFORCE_AUTH",
+    "UAV_ALLOW_DEVICE_ENROLLMENT",
+    "UAV_OWNER_SUBJECT",
     "VITE_NODE_ENV"
   ],
   "globalPassThroughEnv": [

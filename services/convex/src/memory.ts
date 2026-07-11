@@ -5,7 +5,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import { authedAction } from "./functions";
 
 const EMBEDDING_MODEL = "text-embedding-3-large";
 const EMBEDDING_DIMENSIONS = 1024;
@@ -162,7 +162,7 @@ async function indexTaskSource(ctx: ActionCtx, task: Doc<"tasks">) {
   return { chunks: chunks.length, usage };
 }
 
-export const indexNote = action({
+export const indexNote = authedAction({
   args: { noteId: v.id("notes") },
   handler: async (ctx, args) => {
     const note = await ctx.runQuery(internal.memorySources.fetchNote, {
@@ -175,7 +175,7 @@ export const indexNote = action({
   },
 });
 
-export const indexTask = action({
+export const indexTask = authedAction({
   args: { taskId: v.id("tasks") },
   handler: async (ctx, args) => {
     const task = await ctx.runQuery(internal.memorySources.fetchTask, {
@@ -188,7 +188,7 @@ export const indexTask = action({
   },
 });
 
-export const indexProject = action({
+export const indexProject = authedAction({
   args: { projectId: v.id("projects"), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const sources = projectSources(
@@ -210,7 +210,7 @@ export const indexProject = action({
   },
 });
 
-export const ask = action({
+export const ask = authedAction({
   args: {
     projectId: v.id("projects"),
     query: v.string(),

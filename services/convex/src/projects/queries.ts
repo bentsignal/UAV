@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 
-import { query } from "../_generated/server";
+import { authedQuery } from "../functions";
 
-export const byRepoRoot = query({
+export const byRepoRoot = authedQuery({
   args: { repoRoot: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -12,7 +12,7 @@ export const byRepoRoot = query({
   },
 });
 
-export const list = query({
+export const list = authedQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("projects").order("desc").take(50);

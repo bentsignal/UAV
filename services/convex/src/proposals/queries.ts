@@ -1,9 +1,9 @@
 import { v } from "convex/values";
 
-import { query } from "../_generated/server";
+import { authedQuery } from "../functions";
 import { vProposalStatus } from "./validators";
 
-export const list = query({
+export const list = authedQuery({
   args: {
     status: v.optional(vProposalStatus),
   },

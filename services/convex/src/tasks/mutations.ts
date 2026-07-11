@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import type { Doc, Id } from "../_generated/dataModel";
-import { mutation } from "../_generated/server";
+import { authedMutation } from "../functions";
 import { vTaskKind, vTaskPriority, vTaskStatus } from "./validators";
 
 interface TaskUpdateInput {
@@ -56,7 +56,7 @@ function taskUpdatePatch(
   };
 }
 
-export const create = mutation({
+export const create = authedMutation({
   args: {
     projectId: v.id("projects"),
     parentTaskId: v.optional(v.id("tasks")),
@@ -87,7 +87,7 @@ export const create = mutation({
   },
 });
 
-export const updateStatus = mutation({
+export const updateStatus = authedMutation({
   args: {
     taskId: v.id("tasks"),
     status: vTaskStatus,
@@ -105,7 +105,7 @@ export const updateStatus = mutation({
   },
 });
 
-export const update = mutation({
+export const update = authedMutation({
   args: {
     taskId: v.id("tasks"),
     title: v.optional(v.string()),

@@ -1,9 +1,9 @@
 import { v } from "convex/values";
 
-import { query } from "../_generated/server";
+import { authedQuery } from "../functions";
 import { vNoteKind } from "./validators";
 
-export const listForProject = query({
+export const listForProject = authedQuery({
   args: {
     projectId: v.id("projects"),
     kind: v.optional(vNoteKind),
@@ -39,7 +39,7 @@ export const listForProject = query({
   },
 });
 
-export const listGlobal = query({
+export const listGlobal = authedQuery({
   args: {
     limit: v.optional(v.number()),
     query: v.optional(v.string()),
@@ -65,7 +65,7 @@ export const listGlobal = query({
   },
 });
 
-export const listAll = query({
+export const listAll = authedQuery({
   args: {
     limit: v.optional(v.number()),
     query: v.optional(v.string()),

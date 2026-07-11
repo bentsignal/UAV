@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import type { Doc } from "../_generated/dataModel";
-import { query } from "../_generated/server";
+import { authedQuery } from "../functions";
 import { vTaskPriority, vTaskStatus } from "./validators";
 
 const priorityRank = {
@@ -24,7 +24,7 @@ function filterParent(
     : tasks;
 }
 
-export const listForProject = query({
+export const listForProject = authedQuery({
   args: {
     projectId: v.id("projects"),
     parentTaskId: v.optional(v.id("tasks")),

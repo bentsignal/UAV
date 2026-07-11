@@ -1,9 +1,9 @@
 import { v } from "convex/values";
 
-import { mutation } from "../_generated/server";
+import { authedMutation } from "../functions";
 import { vNoteKind, vNoteScope } from "./validators";
 
-export const create = mutation({
+export const create = authedMutation({
   args: {
     scope: v.optional(vNoteScope),
     projectId: v.optional(v.id("projects")),

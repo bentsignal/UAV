@@ -5,6 +5,11 @@ import type { Id } from "@uav/convex/model";
 import { api } from "@uav/convex/api";
 import { toJson } from "@uav/std/json";
 
+import {
+  status as authStatus,
+  login as loginDevice,
+  logout as logoutDevice,
+} from "./auth.ts";
 import { getRepoContext } from "./context.ts";
 import { createUavClient, ensureCurrentProject } from "./convex.ts";
 import { ensureDaemonStarted, startDaemon } from "./daemon.ts";
@@ -85,7 +90,7 @@ function memoryWarning(error: unknown): string {
 }
 
 async function runStatus(options: JsonOptions): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   const { context, projectId } = await ensureCurrentProject(client);
   const [activeTasks, blockedTasks] = await Promise.all([
     client.query(api.tasks.queries.listForProject, {
@@ -113,7 +118,7 @@ async function runRemember(
   commandOptions: RememberOptions,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
 
   if (commandOptions.global) {
     const noteId = await client.mutation(api.notes.mutations.create, {
@@ -151,7 +156,7 @@ async function runRemember(
 }
 
 async function runIdea(message: string, options: JsonOptions): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   const noteId = await client.mutation(api.notes.mutations.create, {
     body: message,
     kind: "idea",
@@ -166,7 +171,7 @@ async function runNotes(
   commandOptions: NotesOptions,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
 
   if (commandOptions.all && commandOptions.global) {
     throw new Error("Use either --all or --global, not both");
@@ -207,7 +212,7 @@ async function runIntent(
   message: string | undefined,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
 
   if (message) {
     const { projectId } = await ensureCurrentProject(client);
@@ -250,7 +255,7 @@ async function runAsk(
   commandOptions: AskOptions,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   const { context, projectId } = await ensureCurrentProject(client);
   const memory = await client.action(api.memory.indexProject, {
     limit: 100,
@@ -274,7 +279,7 @@ async function runTaskAdd(
   commandOptions: TaskAddOptions,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   const { projectId } = await ensureCurrentProject(client);
   const taskId = await client.mutation(api.tasks.mutations.create, {
     body: commandOptions.body,
@@ -308,7 +313,7 @@ async function runTaskList(
   commandOptions: TaskListOptions,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   const { context, projectId } = await ensureCurrentProject(client);
   const tasks = await client.query(api.tasks.queries.listForProject, {
     parentTaskId: commandOptions.parent
@@ -328,7 +333,7 @@ async function runTaskStatus(
   status: TaskStatus,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   await client.mutation(api.tasks.mutations.updateStatus, {
     status,
     taskId: parseTaskId(taskId),
@@ -357,7 +362,7 @@ async function runTaskUpdate(
   commandOptions: TaskUpdateOptions,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   await client.mutation(api.tasks.mutations.update, {
     body: commandOptions.body,
     kind: commandOptions.kind,
@@ -389,7 +394,7 @@ async function runRequest(
   message: string,
   options: JsonOptions,
 ): Promise<void> {
-  const client = createUavClient();
+  const client = await createUavClient();
   const { projectId } = await ensureCurrentProject(client);
   const proposalId = await client.mutation(api.proposals.mutations.create, {
     body: message,
@@ -431,6 +436,36 @@ flow should start with ask/status/remember/task.
     .description("print the detected git/project context")
     .action(() => {
       print(getRepoContext(), program.opts<JsonOptions>());
+    });
+
+  const auth = program
+    .command("auth")
+    .description("manage this device's UAV authentication");
+
+  auth
+    .command("login")
+    .description("authorize this Mac to access UAV")
+    .action(async () => {
+      const result = await loginDevice();
+      print(
+        { authenticated: true, subject: result.subject },
+        program.opts<JsonOptions>(),
+      );
+    });
+
+  auth
+    .command("status")
+    .description("show this device's authentication status")
+    .action(async () => {
+      print(await authStatus(), program.opts<JsonOptions>());
+    });
+
+  auth
+    .command("logout")
+    .description("remove this device's stored UAV credential")
+    .action(async () => {
+      await logoutDevice();
+      print({ authenticated: false }, program.opts<JsonOptions>());
     });
 
   program

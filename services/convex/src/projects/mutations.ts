@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 
-import { mutation } from "../_generated/server";
+import { authedMutation } from "../functions";
 
-export const upsert = mutation({
+export const upsert = authedMutation({
   args: {
     name: v.string(),
     repoRoot: v.string(),
