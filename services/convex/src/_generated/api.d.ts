@@ -23,8 +23,10 @@ import type * as projects_validators from "../projects/validators.js";
 import type * as proposals_mutations from "../proposals/mutations.js";
 import type * as proposals_queries from "../proposals/queries.js";
 import type * as proposals_validators from "../proposals/validators.js";
+import type * as taskClaims_validators from "../taskClaims/validators.js";
 import type * as tasks_mutations from "../tasks/mutations.js";
 import type * as tasks_queries from "../tasks/queries.js";
+import type * as tasks_similarity from "../tasks/similarity.js";
 import type * as tasks_validators from "../tasks/validators.js";
 
 import type {
@@ -49,8 +51,10 @@ declare const fullApi: ApiFromModules<{
   "proposals/mutations": typeof proposals_mutations;
   "proposals/queries": typeof proposals_queries;
   "proposals/validators": typeof proposals_validators;
+  "taskClaims/validators": typeof taskClaims_validators;
   "tasks/mutations": typeof tasks_mutations;
   "tasks/queries": typeof tasks_queries;
+  "tasks/similarity": typeof tasks_similarity;
   "tasks/validators": typeof tasks_validators;
 }>;
 

@@ -35,7 +35,13 @@ interface RememberOptions {
   intent?: boolean;
 }
 
-type TaskStatus = "todo" | "in_progress" | "blocked" | "done" | "canceled";
+type TaskStatus =
+  | "todo"
+  | "deferred"
+  | "in_progress"
+  | "blocked"
+  | "done"
+  | "canceled";
 type TaskPriority = "low" | "normal" | "high" | "urgent";
 type TaskKind = "task" | "bug" | "idea" | "chore" | "goal";
 
@@ -54,12 +60,21 @@ interface TaskListOptions {
 }
 
 interface TaskUpdateOptions {
+  blockedBy?: string;
   body?: string;
+  evidence?: string;
   kind?: TaskKind;
   priority?: TaskPriority;
+  reason?: string;
   status?: TaskStatus;
   tag?: string[];
   title?: string;
+}
+
+interface TaskStatusOptions {
+  blockedBy?: string;
+  evidence?: string;
+  reason?: string;
 }
 
 function print(value: unknown, options: JsonOptions): void {
@@ -78,6 +93,10 @@ function print(value: unknown, options: JsonOptions): void {
 
 function collect(value: string, previous: string[] = []): string[] {
   return [...previous, value];
+}
+
+function currentRunId(): string | undefined {
+  return process.env.UAV_RUN_ID ?? process.env.CODEX_THREAD_ID;
 }
 
 function memoryWarning(error: unknown): string {
@@ -281,6 +300,30 @@ async function runTaskAdd(
 ): Promise<void> {
   const client = await createUavClient();
   const { projectId } = await ensureCurrentProject(client);
+  const similar = await client.action(api.tasks.similarity.findSimilar, {
+    body: commandOptions.body,
+    kind: commandOptions.kind,
+    parentTaskId: commandOptions.parent
+      ? parseTaskId(commandOptions.parent)
+      : undefined,
+    priority: commandOptions.priority,
+    projectId,
+    title,
+  });
+  if (similar.candidates.length > 0) {
+    print(
+      {
+        candidates: similar.candidates,
+        message:
+          "Task not created. Use an existing task, clarify the distinct scope, or add a child task with --parent.",
+        ok: false,
+        reason: "likely_duplicate",
+      },
+      options,
+    );
+    process.exitCode = 2;
+    return;
+  }
   const taskId = await client.mutation(api.tasks.mutations.create, {
     body: commandOptions.body,
     kind: commandOptions.kind,
@@ -331,11 +374,18 @@ async function runTaskList(
 async function runTaskStatus(
   taskId: string,
   status: TaskStatus,
+  commandOptions: TaskStatusOptions,
   options: JsonOptions,
 ): Promise<void> {
   const client = await createUavClient();
   await client.mutation(api.tasks.mutations.updateStatus, {
+    blockerTaskId: commandOptions.blockedBy
+      ? parseTaskId(commandOptions.blockedBy)
+      : undefined,
+    completionEvidence: commandOptions.evidence,
+    runId: currentRunId(),
     status,
+    statusReason: commandOptions.reason,
     taskId: parseTaskId(taskId),
   });
 
@@ -364,10 +414,16 @@ async function runTaskUpdate(
 ): Promise<void> {
   const client = await createUavClient();
   await client.mutation(api.tasks.mutations.update, {
+    blockerTaskId: commandOptions.blockedBy
+      ? parseTaskId(commandOptions.blockedBy)
+      : undefined,
     body: commandOptions.body,
+    completionEvidence: commandOptions.evidence,
     kind: commandOptions.kind,
     priority: commandOptions.priority,
+    runId: currentRunId(),
     status: commandOptions.status,
+    statusReason: commandOptions.reason,
     tags: commandOptions.tag,
     taskId: parseTaskId(taskId),
     title: commandOptions.title,
@@ -388,6 +444,35 @@ async function runTaskUpdate(
       options,
     );
   }
+}
+
+async function runCloseout(options: JsonOptions): Promise<void> {
+  const runId = currentRunId();
+  if (!runId) {
+    throw new Error(
+      "Closeout requires CODEX_THREAD_ID or UAV_RUN_ID to identify the current run",
+    );
+  }
+
+  const client = await createUavClient();
+  const { context, projectId } = await ensureCurrentProject(client);
+  const result = await client.query(api.tasks.queries.closeoutForRun, {
+    projectId,
+    runId,
+  });
+  const ok = result.openClaims.length === 0;
+  print(
+    {
+      message: ok
+        ? "All tasks claimed by this run are resolved."
+        : "Resolve or return every claimed task, then run uav closeout again.",
+      ok,
+      openClaims: result.openClaims,
+      project: context,
+    },
+    options,
+  );
+  if (!ok) process.exitCode = 1;
 }
 
 async function runRequest(
@@ -421,6 +506,7 @@ Common flow:
   uav status               inspect current work
   uav remember <message>   preserve durable context
   uav task <command>       manage structured work items
+  uav closeout             verify claimed work before finishing
 
 Less common commands are still shown above for discovery, but the normal agent
 flow should start with ask/status/remember/task.
@@ -566,7 +652,10 @@ flow should start with ask/status/remember/task.
     .argument("[query...]", "optional text to search for")
     .option("--parent <taskId>", "only show children of a work item")
     .option("--priority <priority>", "low, normal, high, or urgent")
-    .option("--status <status>", "todo, in_progress, blocked, done, canceled")
+    .option(
+      "--status <status>",
+      "todo, deferred, in_progress, blocked, done, or canceled",
+    )
     .action(async (query: string[], commandOptions: TaskListOptions) => {
       await runTaskList(
         query.length > 0 ? query.join(" ") : undefined,
@@ -580,9 +669,32 @@ flow should start with ask/status/remember/task.
     .description("update a work item status")
     .argument("<taskId>")
     .argument("<status>")
-    .action(async (taskId: string, status: TaskStatus) => {
-      await runTaskStatus(taskId, status, program.opts<JsonOptions>());
-    });
+    .option(
+      "--reason <reason>",
+      "reason for blocked, deferred, or canceled work",
+    )
+    .option(
+      "--blocked-by <taskId>",
+      "task preventing this work from proceeding",
+    )
+    .option(
+      "--evidence <evidence>",
+      "short evidence summary for completed work",
+    )
+    .action(
+      async (
+        taskId: string,
+        status: TaskStatus,
+        commandOptions: TaskStatusOptions,
+      ) => {
+        await runTaskStatus(
+          taskId,
+          status,
+          commandOptions,
+          program.opts<JsonOptions>(),
+        );
+      },
+    );
 
   task
     .command("update")
@@ -591,11 +703,30 @@ flow should start with ask/status/remember/task.
     .option("--body <body>", "replace task details")
     .option("--kind <kind>", "task, bug, idea, chore, or goal")
     .option("--priority <priority>", "low, normal, high, or urgent")
-    .option("--status <status>", "todo, in_progress, blocked, done, canceled")
+    .option(
+      "--status <status>",
+      "todo, deferred, in_progress, blocked, done, or canceled",
+    )
+    .option("--reason <reason>", "reason for the new status")
+    .option(
+      "--blocked-by <taskId>",
+      "task preventing this work from proceeding",
+    )
+    .option(
+      "--evidence <evidence>",
+      "short evidence summary for completed work",
+    )
     .option("--tag <tag>", "replace tags; can be repeated", collect)
     .option("--title <title>", "replace title")
     .action(async (taskId: string, commandOptions: TaskUpdateOptions) => {
       await runTaskUpdate(taskId, commandOptions, program.opts<JsonOptions>());
+    });
+
+  program
+    .command("closeout")
+    .description("verify that this run has resolved every claimed task")
+    .action(async () => {
+      await runCloseout(program.opts<JsonOptions>());
     });
 
   program

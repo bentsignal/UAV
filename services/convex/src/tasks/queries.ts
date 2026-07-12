@@ -90,3 +90,28 @@ export const listForProject = authedQuery({
     return filterParent(tasks.flat(), args.parentTaskId).slice(0, 50);
   },
 });
+
+export const closeoutForRun = authedQuery({
+  args: {
+    projectId: v.id("projects"),
+    runId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const claims = await ctx.db
+      .query("taskClaims")
+      .withIndex("by_run_status", (q) =>
+        q.eq("runId", args.runId).eq("status", "active"),
+      )
+      .collect();
+    const openClaims = [];
+
+    for (const claim of claims) {
+      if (claim.projectId !== args.projectId) continue;
+      const task = await ctx.db.get(claim.taskId);
+      if (!task) continue;
+      openClaims.push({ claimId: claim._id, startedAt: claim.startedAt, task });
+    }
+
+    return { openClaims };
+  },
+});

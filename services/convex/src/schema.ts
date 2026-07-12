@@ -4,6 +4,7 @@ import { vMemoryEmbedding } from "./memory/validators";
 import { vNote } from "./notes/validators";
 import { vProject } from "./projects/validators";
 import { vProposal } from "./proposals/validators";
+import { vTaskClaim } from "./taskClaims/validators";
 import { vTask } from "./tasks/validators";
 
 export default defineSchema(
@@ -20,6 +21,9 @@ export default defineSchema(
         searchField: "searchText",
         filterFields: ["projectId", "status"],
       }),
+    taskClaims: defineTable(vTaskClaim)
+      .index("by_run_status", ["runId", "status"])
+      .index("by_task_status", ["taskId", "status"]),
     notes: defineTable(vNote)
       .index("by_createdAt", ["createdAt"])
       .index("by_scope_createdAt", ["scope", "createdAt"])

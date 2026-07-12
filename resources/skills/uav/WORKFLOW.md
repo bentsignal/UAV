@@ -13,11 +13,26 @@ Use uav as shared project memory and durable work tracking:
 5. Use `uav task list` to inspect durable work items, optionally narrowing with
    `--status` or `--priority`. Use `uav task add` for larger goals, bugs, ideas,
    chores, or follow-up tasks that should outlive the current agent context.
-6. During work, record decisions, discoveries, blockers, validation results, and
+   Task creation checks for likely duplicates before writing anything; prefer an
+   existing task, clarify a genuinely distinct scope, or add a child task when a
+   match is returned.
+6. Mark a task `in_progress` when taking responsibility for it. This claims the
+   task for the current run. Before delegating durable work to a child agent,
+   claim the task and include its task ID in the child's prompt; the orchestrator
+   remains responsible for recording the child's outcome.
+7. During work, record decisions, discoveries, blockers, validation results, and
    other context worth preserving with `uav remember`.
-7. When finishing or pausing, store any durable outcome or follow-up as a note,
+8. Use `blocked` for work intended now but waiting on something, optionally with
+   `--blocked-by <task-id>`. Use `deferred` for deliberately postponed work.
+   Blocked, deferred, and canceled tasks require `--reason`; done tasks require
+   `--evidence`.
+9. Before the final response, run `uav closeout`. Every task claimed by the
+   current run must be done with evidence, blocked/deferred/canceled with a
+   reason, or returned to todo with a reason. Resolve anything it reports and
+   repeat `uav closeout` until it succeeds.
+10. When finishing or pausing, store any durable outcome or follow-up as a note,
    intent note, or work item.
-8. If uav needs a better schema, workflow, retrieval behavior, or CLI surface,
+11. If uav needs a better schema, workflow, retrieval behavior, or CLI surface,
    record an improvement request with `uav request`.
 
 Treat the repository's current code, configuration, and tests as the source of

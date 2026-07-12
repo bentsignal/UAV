@@ -55,10 +55,15 @@ function taskMemoryText(task: Doc<"tasks">) {
   return [
     `Type: ${task.kind}`,
     `Status: ${task.status}`,
+    task.statusReason ? `Status reason: ${task.statusReason}` : undefined,
     `Priority: ${task.priority}`,
+    task.blockerTaskId ? `Blocked by: ${task.blockerTaskId}` : undefined,
     task.tags.length > 0 ? `Tags: ${task.tags.join(", ")}` : undefined,
     `Title: ${task.title}`,
     task.body,
+    task.completionEvidence
+      ? `Completion evidence: ${task.completionEvidence}`
+      : undefined,
   ]
     .filter(Boolean)
     .join("\n");
